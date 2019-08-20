@@ -19,7 +19,7 @@ while(True):
     print("What would you like to do?")
     print("1.Record expenses")
     print("2.See expense history")
-    print("3.Get particular expense")
+    print("3.Get particular expense in a particular period")
     print("4.Clear expenses")
     print("5.Quit")
     choice = int(input("Enter your choice of option :"))
@@ -43,32 +43,43 @@ while(True):
             index = querylist.index("spent")
         except:
             index = querylist.index("spend")
-        if querylist[index+3 ]== "and":
-            flag = 1
+        length = len(querylist)
+        try:
+            if querylist[index+ 3]== "and":
+                flag = 1
+        except:
+            continue
         if flag == 0:
-            category = querylist[index+2]
-            if category in df.columns:
-                cardno = text2int[querylist[index+6]]        #Takes in the number of time periods , ex: "one" week, "two" months etc.
-                period = querylist[index+7]
-                if period == "week" or period=="weeks":
-                    timebegin = datetime.today() - timedelta(days= 7*cardno)
-                if period == "month" or period == "months":
-                    timebegin = datetime.today() - relativedelta(months= cardno)
-                if period == "year" or period == "years":
-                    timebegin = datetime.today() - relativedelta(years=cardno)
-                else:
-                    timebegin = 0
-                print(df[df.Time >= timebegin])
+            category = querylist[index + 2]
+            if length == index + 3:
+                print(df[df.Category == category])
             else:
-                print("Error 404! Category {} not found! Try other categories".format(category))
-            if flag == 1:
-                category1 = querylist[index + 2]
-                category2 = querylist[index+4]
+                category = querylist[index+2]
+                if category in df.columns:
+                    cardno = text2int[querylist[index+6]]        #Takes in the number of time periods , ex: "one" week, "two" months etc.
+                    period = querylist[index+7]
+                    if period == "week" or period=="weeks":
+                        timebegin = datetime.today() - timedelta(days= 7*cardno)
+                    if period == "month" or period == "months":
+                        timebegin = datetime.today() - relativedelta(months= cardno)
+                    if period == "year" or period == "years":
+                        timebegin = datetime.today() - relativedelta(years=cardno)
+                    else:
+                        timebegin = 0
+                    print(df[(df.Time >= timebegin) & (df.Category == category)])
+                else:
+                    print("Error 404! Category {} not found! Try other categories".format(category))
+        if flag == 1:
+            category1 = querylist[index + 2]
+            category2 = querylist[index + 4]
+            if length == index + 5:
+                print((df.Category == category1) & (df.Category == category2))
+            else:
                 if category1 in df.columns:
                     if category2 in df.columns:
                         cardno = text2int[
-                            querylist[index + 6]]  # Takes in the number of time periods , ex: "one" week, "two" months etc.
-                        period = querylist[index + 7]
+                            querylist[index + 8]]        # Takes in the number of time periods , ex: "one" week, "two" months etc.
+                        period = querylist[index + 9]
                         if period == "week" or period == "weeks":
                             timebegin = datetime.today() - timedelta(days=7 * cardno)
                         if period == "month" or period == "months":
@@ -77,7 +88,7 @@ while(True):
                             timebegin = datetime.today() - relativedelta(years=cardno)
                         else:
                             timebegin = 0
-                        print(df[df.Time >= timebegin])
+                        print(df[(df.Time >= timebegin) & (df.Category == category1) & (df.Category == category2)])
                     else:
                         print("Error 404! Category {} not found! Try other categories".format(category2))
                 else:
