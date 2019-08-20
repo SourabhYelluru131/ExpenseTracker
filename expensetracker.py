@@ -24,7 +24,7 @@ while(True):
     print("5.Quit")
     choice = int(input("Enter your choice of option :"))
     if my_file.exists():
-        df = pd.read_csv("expenserecord.csv")
+        df = pd.read_csv("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")
     else:
         df = pd.DataFrame(columns = ["Time","Category","Amount"])
     if choice ==1:
