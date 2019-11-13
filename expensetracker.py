@@ -20,6 +20,7 @@ text2int = {"one": 1,
             "ten": 10}
 print("Hello!")
 while True:
+    # repeating instructions
     print("_________________________________________________________________________________")
     print("What would you like to do?")
     print("1.Record expenses")
@@ -28,9 +29,11 @@ while True:
     print("4.Clear expenses")
     print("5.Quit")
     choice = int(input("Enter your choice of option :"))
+    # check if dataframe already exists, if not , creates one
     if my_file.exists():
-        df = pd.read_csv("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")        #Change the address
+        df = pd.read_csv("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")        # Change the address
     else:
+        # Dataframe has 3 categories - Time, Category and Amount
         df = pd.DataFrame(columns=["Time", "Category", "Amount"])
         df = df.fillna(0)
     if choice == 1:
@@ -49,13 +52,14 @@ while True:
         df['Time'] = pd.to_datetime(df.Time)
         items = []
         query = input()
+        # Allow querying using words as dateparser searches only for numbers , else main_time_object ceases to exist
         for a in text2int:
             if a in query:
                 query = query.replace(a, str(text2int[a]))
         query.replace("yesterday","last 1 day")
         query.replace("day before yesterday", "last 2 days")
         sconj_perc = ""
-        # If main_time_obj exists,
+        # If main_time_obj exists, take directly, else check for keywords like week, month , year etc
         try:
             main_time_obj = search_dates(query)[0][0]
             begin_time = search_dates(query)[0][1]
@@ -69,6 +73,7 @@ while True:
                     break
             if checkflag:
                 try:
+                    # check if number of periods(day, week, year) is given, else put 1
                     main_time_obj = str(int(query.split()[query.split().index(checkword)-1])) + " " + str(query.split()[query.split().index(checkword)])
                 except:
                     try:
@@ -77,9 +82,8 @@ while True:
                         print("Enter correct time period.")
                         break
         doc = nlp(query)
-        #print(str(main_time_obj) + ":main time obj")
         for t in doc:
-            #print(t.text, t.pos_, t.dep_)
+            #check for conjugations like "Since"     // NOT COMPLETED
             if t.pos_ == 'SCONJ':
                 sconj_perc = t.text
             if sconj_perc == "":
@@ -93,10 +97,12 @@ while True:
                 cardno = int(main_time_obj.split()[0])
                 period = str(main_time_obj.split()[1])
             except:
+                # Puts cardno to 1 in the case where main_time_object does not exist . Ex : last week, past year etc
                 cardno = 1
                 period = None
         else:
             cardno = 0
+        # If "since" does not exist in the query ->
         if not sconj_perc:
             if period == "day" or period == "days":
                 begin_time = datetime.today() - timedelta(days=cardno)
@@ -107,6 +113,7 @@ while True:
             elif period == "year" or period == "years":
                 begin_time = datetime.today() - relativedelta(years=cardno)
             else:
+                # Basically display the entire dataframe
                 begin_time = "2000-01-01 00:00:01"
             for a in items:
                 if df.empty or df.dropna().empty:
