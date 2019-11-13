@@ -1,21 +1,26 @@
 import pandas as pd
 from datetime import datetime, timedelta
 import os
-import dateutil.relativedelta as relativedelta
+import spacy
+from dateutil.relativedelta import relativedelta
+from dateparser.search import search_dates
 from pathlib import Path
+password = "password"
 my_file = Path("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")
-text2int = {"one":1,
-            "two":2,
-            "three":3,
-            "four":4,
-            "five":5,
-            "six":6,
-            "seven":7,
-            "eight":8,
-            "nine":9,
-            "ten":10}
+nlp = spacy.load('en_core_web_sm')
+text2int = {"one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+            "ten": 10}
 print("Hello!")
-while(True):
+while True:
+    print("_________________________________________________________________________________")
     print("What would you like to do?")
     print("1.Record expenses")
     print("2.See expense history")
@@ -24,77 +29,100 @@ while(True):
     print("5.Quit")
     choice = int(input("Enter your choice of option :"))
     if my_file.exists():
-        df = pd.read_csv("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")
+        df = pd.read_csv("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")        #Change the address
     else:
-        df = pd.DataFrame(columns = ["Time","Category","Amount"])
-    if choice ==1:
+        df = pd.DataFrame(columns=["Time", "Category", "Amount"])
+        df = df.fillna(0)
+    if choice == 1:
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         cat = input("Enter the category of expense:")
         amt = float(input("Enter the amount spent:"))
-        df.append(pd.Series([now,cat,amt],index= df.columns),ignore_index = True)
-        df.to_csv("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")
+        df_new = pd.DataFrame({'Time': [now],
+                               'Category': [cat],
+                               'Amount': [amt]})
+        frames = [df, df_new]
+        result = pd.concat(frames)
+        result.to_csv("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv", index=False)
     if choice ==2:
         print(df)
-    if choice ==3:
-        query = input("Query:")
-        querylist = query.split(" ")
-        flag = 0
+    if choice == 3:
+        df['Time'] = pd.to_datetime(df.Time)
+        items = []
+        query = input()
+        for a in text2int:
+            if a in query:
+                query = query.replace(a, str(text2int[a]))
+        query.replace("yesterday","last 1 day")
+        query.replace("day before yesterday", "last 2 days")
+        sconj_perc = ""
+        # If main_time_obj exists,
         try:
-            index = querylist.index("spent")
+            main_time_obj = search_dates(query)[0][0]
+            begin_time = search_dates(query)[0][1]
         except:
-            index = querylist.index("spend")
-        length = len(querylist)
-        try:
-            if querylist[index+ 3]== "and":
-                flag = 1
-        except:
-            continue
-        if flag == 0:
-            category = querylist[index + 2]
-            if length == index + 3:
-                print(df[df.Category == category])
+            checklist = ['day', 'days', 'week', 'weeks', 'month', 'months', 'year', 'years', 'fortnight']
+            checkflag = 0
+            for t in checklist:
+                if t in query:
+                    checkflag = 1
+                    checkword = t
+                    break
+            if checkflag:
+                try:
+                    main_time_obj = str(int(query.split()[query.split().index(checkword)-1])) + " " + str(query.split()[query.split().index(checkword)])
+                except:
+                    try:
+                        main_time_obj = "1 " + str(query.split()[query.split().index(checkword)])
+                    except:
+                        print("Enter correct time period.")
+                        break
+        doc = nlp(query)
+        #print(str(main_time_obj) + ":main time obj")
+        for t in doc:
+            #print(t.text, t.pos_, t.dep_)
+            if t.pos_ == 'SCONJ':
+                sconj_perc = t.text
+            if sconj_perc == "":
+                sconj_perc = None
+            if t.pos_ == "NOUN" or t.pos_ == "PROPN":
+                if t.dep_ == "pobj" or t.dep_ == "conj":
+                    items.append(t.text)
+        cardno = 0
+        if main_time_obj:
+            try:
+                cardno = int(main_time_obj.split()[0])
+                period = str(main_time_obj.split()[1])
+            except:
+                cardno = 1
+                period = None
+        else:
+            cardno = 0
+        if not sconj_perc:
+            if period == "day" or period == "days":
+                begin_time = datetime.today() - timedelta(days=cardno)
+            elif period == "week" or period == "weeks":
+                begin_time = datetime.today() - timedelta(days=7 * cardno)
+            elif period == "month" or period == "months":
+                begin_time = datetime.today() - relativedelta(months=cardno)
+            elif period == "year" or period == "years":
+                begin_time = datetime.today() - relativedelta(years=cardno)
             else:
-                category = querylist[index+2]
-                if category in df.columns:
-                    cardno = text2int[querylist[index+6]]        #Takes in the number of time periods , ex: "one" week, "two" months etc.
-                    period = querylist[index+7]
-                    if period == "week" or period=="weeks":
-                        timebegin = datetime.today() - timedelta(days= 7*cardno)
-                    if period == "month" or period == "months":
-                        timebegin = datetime.today() - relativedelta(months= cardno)
-                    if period == "year" or period == "years":
-                        timebegin = datetime.today() - relativedelta(years=cardno)
-                    else:
-                        timebegin = 0
-                    print(df[(df.Time >= timebegin) & (df.Category == category)])
+                begin_time = "2000-01-01 00:00:01"
+            for a in items:
+                if df.empty or df.dropna().empty:
+                    print("Category {} not found. Either there is NO EXPENDITURE in that Category or check casing and try again!".format(a))
                 else:
-                    print("Error 404! Category {} not found! Try other categories".format(category))
-        if flag == 1:
-            category1 = querylist[index + 2]
-            category2 = querylist[index + 4]
-            if length == index + 5:
-                print((df.Category == category1) & (df.Category == category2))
-            else:
-                if category1 in df.columns:
-                    if category2 in df.columns:
-                        cardno = text2int[
-                            querylist[index + 8]]        # Takes in the number of time periods , ex: "one" week, "two" months etc.
-                        period = querylist[index + 9]
-                        if period == "week" or period == "weeks":
-                            timebegin = datetime.today() - timedelta(days=7 * cardno)
-                        if period == "month" or period == "months":
-                            timebegin = datetime.today() - relativedelta(months=cardno)
-                        if period == "year" or period == "years":
-                            timebegin = datetime.today() - relativedelta(years=cardno)
-                        else:
-                            timebegin = 0
-                        print(df[(df.Time >= timebegin) & (df.Category == category1) & (df.Category == category2)])
-                    else:
-                        print("Error 404! Category {} not found! Try other categories".format(category2))
-                else:
-                    print("Error 404! Category {} not found! Try other categories".format(category1))
+                    print("_________________________________________________________________________________")
+                    print("Category :  {}".format(a))
+                    print(df[(df.Time >= begin_time) & (df.Category == a)])
     elif choice == 4:
-        os.remove("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")
+        entered_password = input("Enter Password:")
+        if entered_password != password:
+            print("Wrong password")
+        else:
+            os.remove("/Users/sourabhyelluru/PycharmProjects/ExpenseTracker/expenserecord.csv")
     elif choice == 5:
         print("Bye! See ya ")
         break
+    else:
+        print("Choose an option between 1 and 5!")
