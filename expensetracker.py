@@ -1,3 +1,4 @@
+# Author - Sourabh S Yelluru
 import pandas as pd
 from datetime import datetime, timedelta
 import os
@@ -49,6 +50,7 @@ while True:
     if choice ==2:
         print(df)
     if choice == 3:
+        checklist = ['day', 'days', 'week', 'weeks', 'month', 'months', 'year', 'years', 'fortnight']
         df['Time'] = pd.to_datetime(df.Time)
         items = []
         query = input()
@@ -64,7 +66,6 @@ while True:
             main_time_obj = search_dates(query)[0][0]
             begin_time = search_dates(query)[0][1]
         except:
-            checklist = ['day', 'days', 'week', 'weeks', 'month', 'months', 'year', 'years', 'fortnight']
             checkflag = 0
             for t in checklist:
                 if t in query:
@@ -90,7 +91,8 @@ while True:
                 sconj_perc = None
             if t.pos_ == "NOUN" or t.pos_ == "PROPN":
                 if t.dep_ == "pobj" or t.dep_ == "conj":
-                    items.append(t.text)
+                    if t.text not in checklist:
+                        items.append(t.text)
         cardno = 0
         if main_time_obj:
             try:
